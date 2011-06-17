@@ -48,12 +48,10 @@ if DEBUG
    DEBUG_CPPFLAGS = -DDEBUG_TIMING
 endif
 
-BOOST_STATIC_LIBS = $(BOOST_ROOT)/lib/libboost_system.a $(BOOST_ROOT)/lib/libboost_filesystem.a  $(BOOST_ROOT)/lib/libboost_regex.a
-
 # Set libraries external to this component.
-EXTERNAL_LIBS = $(fb303_home)/lib/libfb303.a  $(thrift_home)/lib/libthrift.a $(thrift_home)/lib/libthriftnb.a -L$(hadoop_home)/lib
+EXTERNAL_LIBS = -L/usr/lib64/boost141 -lfb303  -lthrift -lthriftnb -L$(hadoop_home)/lib
 EXTERNAL_LIBS += -levent -lpthread
-EXTERNAL_LIBS += $(BOOST_STATIC_LIBS)
+EXTERNAL_LIBS += -lboost_system -lboost_filesystem -lboost_regex
 if USE_SCRIBE_HDFS
   EXTERNAL_LIBS += -lhdfs -ljvm
 endif
@@ -97,9 +95,9 @@ endif
 
 # Shared -- multiple libraries can be defined
 if SHARED
-shareddir = $(prefix)/lib
+shareddir = $(prefix)/lib64
 shared_PROGRAMS = libscribe.so
-libscribe_so_SOURCES = gen-cpp/scribe.cpp gen-cpp/scribe_types.cpp
+libscribe_so_SOURCES = gen-cpp/BucketStoreMapping.cpp gen-cpp/bucketupdater_constants.cpp gen-cpp/scribe.cpp gen-cpp/scribe_types.cpp dynamic_bucket_updater.cpp
 libscribe_so_CXXFLAGS = $(SHARED_CXXFLAGS)
 libscribe_so_LDFLAGS = $(SHARED_LDFLAGS)
 INTERNAL_LIBS =  libscribe.so
@@ -107,7 +105,7 @@ endif
 
 # Binaries -- multiple progs can be defined.
 bin_PROGRAMS = scribed
-scribed_SOURCES = source.cpp store.cpp store_queue.cpp SourceConf.cpp conf.cpp file.cpp conn_pool.cpp scribe_server.cpp network_dynamic_config.cpp dynamic_bucket_updater.cpp url.cpp $(FB_SOURCES) $(ENV_SOURCES)
+scribed_SOURCES = source.cpp store.cpp store_queue.cpp SourceConf.cpp conf.cpp file.cpp conn_pool.cpp scribe_server.cpp dynamic_bucket_updater.cpp network_dynamic_config.cpp url.cpp gen-cpp/bucketupdater_types.cpp $(FB_SOURCES) $(ENV_SOURCES)
 if USE_SCRIBE_HDFS
   scribed_SOURCES += HdfsFile.cpp
 endif
@@ -126,7 +124,6 @@ check_PROGRAMS = $(TESTS)
 url_test_SOURCES = url.h url.cpp url_test.cpp
 url_test_CXXFLAGS = $(CPPUNIT_CFLAGS)
 url_test_LDFLAGS = $(CPPUNIT_LIBS)
-url_test_LDADD = $(BOOST_STATIC_LIBS)
 
 # Section 4 ##############################################################################
 # Set up Thrift specific activity here.
