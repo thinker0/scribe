@@ -160,8 +160,10 @@ scribeHandler::scribeHandler(unsigned long int server_port, const std::string& c
     maxMsgPerSecond(DEFAULT_MAX_MSG_PER_SECOND),
     maxQueueSize(DEFAULT_MAX_QUEUE_SIZE),
     maxConn(DEFAULT_MAX_CONN),
-    newThreadPerCategory(true),
-    zkClient(NULL) {
+#ifdef USE_ZOOKEEPER
+    zkClient(NULL),
+#endif
+    newThreadPerCategory(true) {
   time(&lastMsgTime);
   scribeHandlerLock = scribe::concurrency::createReadWriteMutex();
 }
