@@ -24,3 +24,4 @@ nbproject
 *.pyc
 *~
 *.a
+*.so
