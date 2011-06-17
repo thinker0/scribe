@@ -42,8 +42,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
-#include "boost/filesystem.hpp"
+#include <boost/filesystem.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/convenience.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -51,7 +52,6 @@
 
 #ifdef USE_ZOOKEEPER
 #include <time.h>
-#include <boost/lexical_cast.hpp>
 #include <zookeeper.h>
 #endif
 
