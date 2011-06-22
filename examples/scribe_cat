@@ -91,7 +91,7 @@ def send(fd, category, host='127.0.0.1', port=1463, reconnect_timeout=1):
                 except:
                     pass
         except TTransportException, error:
-            logging.warn('Caught s scribe issue: %s' % error)
+            logging.warn('Caught scribe exception (%s): %s' % (type(error), error))
 
         logging.info('Sleeping for %s' % timeout)
         time.sleep(timeout)
