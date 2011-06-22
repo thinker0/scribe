@@ -1,60 +1,155 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
-##  Copyright (c) 2007-2008 Facebook
-##
-##  Licensed under the Apache License, Version 2.0 (the "License");
-##  you may not use this file except in compliance with the License.
-##  You may obtain a copy of the License at
-##
-##      http://www.apache.org/licenses/LICENSE-2.0
-##
-##  Unless required by applicable law or agreed to in writing, software
-##  distributed under the License is distributed on an "AS IS" BASIS,
-##  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-##  See the License for the specific language governing permissions and
-##  limitations under the License.
-##
-## See accompanying file LICENSE or visit the Scribe site at:
-## http://developers.facebook.com/scribe/
+"""
+Copyright (c) 2007-2008 Facebook
 
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-'''scribe_cat: A simple script for sending messages to scribe.'''
+    http://www.apache.org/licenses/LICENSE-2.0
 
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+See accompanying file LICENSE or visit the Scribe site at:
+http://developers.facebook.com/scribe/
+"""
+
+import optparse
+import logging
 import sys
-from scribe import scribe
-from thrift.transport import TTransport, TSocket
+import time
+from thrift.transport import TTransport
+from thrift.transport import TSocket
+from thrift.transport.TTransport import TTransportException
 from thrift.protocol import TBinaryProtocol
+from scribe import scribe
 
-if len(sys.argv) == 2:
-  category = sys.argv[1]
-  host = '127.0.0.1'
-  port = 1463
-elif len(sys.argv) == 4 and sys.argv[1] == '-h':
-  category = sys.argv[3]
-  host_port = sys.argv[2].split(':')
-  host = host_port[0]
-  if len(host_port) > 1:
-    port = int(host_port[1])
-  else:
-    port = 1463
-else:
-  sys.exit('usage (message is stdin): scribe_cat [-h host[:port]] category')
+quiet = False
 
-log_entry = scribe.LogEntry(category=category, message=sys.stdin.read())
+class Error(Exception): pass
+class Done(Exception): pass
 
-socket = TSocket.TSocket(host=host, port=port)
-transport = TTransport.TFramedTransport(socket)
-protocol = TBinaryProtocol.TBinaryProtocol(trans=transport, strictRead=False, strictWrite=False)
-client = scribe.Client(iprot=protocol, oprot=protocol)
+def scribe_fix_legacy():
+    global scribe
+    old_log_entry = scribe.LogEntry
+    def new_log_entry(**kwargs):
+        return old_log_entry(kwargs)
+    scribe.LogEntry = new_log_entry
 
-transport.open()
-result = client.Log(messages=[log_entry])
-transport.close()
+def send(fd, category, host='127.0.0.1', port=1463, reconnect_timeout=1):
+    line = None
 
-if result == scribe.ResultCode.OK:
-  sys.exit()
-elif result == scribe.ResultCode.TRY_LATER:
-  print >> sys.stderr, "TRY_LATER"
-  sys.exit(84)  # 'T'
-else:
-  sys.exit("Unknown error code.")
+    while True:
+        result = scribe.ResultCode.TRY_LATER
+
+        try:
+            logging.info('Connecting to %s:%s' % (host, port))
+
+            socket = TSocket.TSocket(host=host, port=port)
+            transport = TTransport.TFramedTransport(socket)
+            protocol = TBinaryProtocol.TBinaryProtocol(
+                trans=transport,
+                strictRead=False,
+                strictWrite=False,
+            )
+            client = scribe.Client(iprot=protocol, oprot=protocol)
+
+            try:
+                transport.open()
+                timeout = reconnect_timeout
+
+                while True:
+                    if line is None:
+                        line = fd.readline()
+
+                        if not line:
+                            raise Done()
+
+                    try:
+                        log_entry = scribe.LogEntry(
+                            category=category,
+                            message=line.strip(),
+                        )
+                    except TypeError:
+                        scribe_fix_legacy()
+                        log_entry = scribe.LogEntry(
+                            category=category,
+                            message=line.strip(),
+                        )
+                    result = client.Log(messages=[log_entry])
+
+                    if result == scribe.ResultCode.OK:
+                        line = None
+            finally:
+                try:
+                    transport.close()
+                except:
+                    pass
+        except TTransportException, error:
+            logging.warn('Caught s scribe issue: %s' % error)
+
+        logging.info('Sleeping for %s' % timeout)
+        time.sleep(timeout)
+        if timeout < 128: timeout *= 2
+
+if __name__ == '__main__':
+    parser = optparse.OptionParser(usage='usage: %prog [options] CATEGORY [FILE]')
+    parser.add_option(
+        '--host',
+        default='127.0.0.1',
+        dest='host',
+        help='destination Scribe host server',
+        metavar='HOST',
+    )
+    parser.add_option(
+        '--port',
+        default=1463,
+        dest='port',
+        help='destination Scribe port',
+        metavar='PORT',
+        type='int',
+    )
+    parser.add_option(
+        '-q',
+        '--quiet',
+        action='store_true',
+        dest='quiet',
+    )
+    options, args = parser.parse_args()
+    fd = sys.stdin
+
+    if options.quiet:
+        logging.basicConfig(level=logging.CRITICAL)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    try:
+        if len(args) > 0:
+            if len(args) == 2:
+                if not os.path.isfile(args[1]):
+                    raise Error('File not found: %s' % args[1])
+                fd = open(args[1])
+            elif len(args) > 2:
+                raise Error('Only one file allowed: %s' % ', '.join(args[1:]))
+            try:
+                send(
+                    fd,
+                    args[0],
+                    host=options.host,
+                    port=options.port,
+                )
+            except (Done, KeyboardInterrupt):
+                sys.exit(0)
+        else:
+            if not options.quiet:
+                parser.print_help()
+    finally:
+        try:
+            fd.close()
+        except:
+            pass
