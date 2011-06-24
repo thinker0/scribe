@@ -49,7 +49,7 @@ if DEBUG
 endif
 
 # Set libraries external to this component.
-EXTERNAL_LIBS = -L/usr/lib64/boost141 -lfb303  -lthrift -lthriftnb -L$(hadoop_home)/lib
+EXTERNAL_LIBS = -L$(libdir)/boost141 -lfb303  -lthrift -lthriftnb -L$(hadoop_home)/lib
 EXTERNAL_LIBS += -levent -lpthread
 EXTERNAL_LIBS += -lboost_system -lboost_filesystem -lboost_regex
 if USE_SCRIBE_HDFS
@@ -95,9 +95,9 @@ endif
 
 # Shared -- multiple libraries can be defined
 if SHARED
-shareddir = $(prefix)/lib64
+shareddir = $(libdir)
 shared_PROGRAMS = libscribe.so
-libscribe_so_SOURCES = gen-cpp/BucketStoreMapping.cpp gen-cpp/bucketupdater_constants.cpp gen-cpp/scribe.cpp gen-cpp/scribe_types.cpp dynamic_bucket_updater.cpp
+libscribe_so_SOURCES = gen-cpp/scribe.cpp gen-cpp/scribe_types.cpp gen-cpp/scribe_constants.cpp gen-cpp/BucketStoreMapping.cpp gen-cpp/bucketupdater_constants.cpp gen-cpp/bucketupdater_types.cpp
 libscribe_so_CXXFLAGS = $(SHARED_CXXFLAGS)
 libscribe_so_LDFLAGS = $(SHARED_LDFLAGS)
 INTERNAL_LIBS =  libscribe.so
