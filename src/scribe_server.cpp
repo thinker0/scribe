@@ -878,3 +878,11 @@ void scribeHandler::deleteCategoryMap(category_map_t& cats) {
   } // for each category
   cats.clear();
 }
+
+void FacebookBase::getName(std::string& _return) {
+    _return = name_;
+}
+
+int64_t FacebookBase::aliveSince() {
+    return aliveSince_;
+}
