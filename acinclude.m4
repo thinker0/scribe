@@ -1,6 +1,6 @@
 AC_DEFUN([FB_INITIALIZE],
 [
-AM_INIT_AUTOMAKE([ foreign 1.9.5 no-define ])
+AM_INIT_AUTOMAKE([ subdir-objects foreign 1.9.5 no-define ])
 if test "x$1" = "xlocalinstall"; then
 wdir=`pwd`
 # To use $wdir undef quote.
